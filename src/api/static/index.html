@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentiment Analysis MLOps — Production Dashboard</title>
+  <meta name="description" content="An Automated CI/CD Framework for ML Model Deployment and Monitoring on AWS Cloud">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- Header Navigation -->
+    <header class="header-nav">
+      <div class="brand-container">
+        <div class="brand-logo">⚡</div>
+        <div class="brand-info">
+          <h1>Sentiment MLOps</h1>
+          <p>AWS ECS Fargate · Production Service</p>
+        </div>
+      </div>
+
+      <div class="header-status-pills">
+        <div class="status-beacon" id="systemHealthBeacon">
+          <span class="beacon-dot"></span>
+          <span id="healthStatusText">AWS ECS: HEALTHY</span>
+        </div>
+        <div class="cloud-badge">
+          <span>☁️</span> AWS Fargate
+        </div>
+        <a href="/docs" target="_blank" class="btn-nav-docs">
+          <span>📖</span> API Docs (/docs)
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-tag">MLOps Capstone Project · Final Year Engineering</div>
+      <h2 class="hero-title">
+        Sentiment Analysis <span>MLOps Pipeline</span>
+      </h2>
+      <p class="hero-desc">
+        An automated CI/CD framework for machine learning model deployment, real-time inference, and continuous drift monitoring on AWS Cloud infrastructure.
+      </p>
+
+      <div class="hero-meta-bar">
+        <div class="meta-item">
+          <span class="meta-label">Project Team:</span>
+          <span class="meta-value authors">Yash Thorat · Pranav Padwal · Prasad</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Department:</span>
+          <span class="meta-value">Computer Science & Engineering</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Academic Year:</span>
+          <span class="meta-value">2026 - 2027</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-navigation">
+      <button class="tab-btn active" data-tab="tab-playground">
+        <span>⚡</span> Real-Time Playground
+      </button>
+      <button class="tab-btn" data-tab="tab-batch">
+        <span>📦</span> Batch Analysis Lab
+      </button>
+      <button class="tab-btn" data-tab="tab-telemetry">
+        <span>📊</span> Telemetry & Observability
+      </button>
+      <button class="tab-btn" data-tab="tab-architecture">
+        <span>🔄</span> Pipeline & Drift Monitor
+      </button>
+    </nav>
+
+    <!-- TAB 1: Real-Time Playground -->
+    <main id="tab-playground" class="tab-pane active">
+      <div class="playground-grid">
+
+        <!-- Input Glass Card -->
+        <div class="glass-card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <span>✍️</span> Sentiment Inference
+            </h3>
+            <span class="badge-tag">FastAPI REST /predict</span>
+          </div>
+
+          <!-- Quick Load Preset Chips -->
+          <div class="presets-container">
+            <div class="presets-label">Quick Test Presets:</div>
+            <div class="chip-row">
+              <button class="chip" data-preset="masterpiece">🎬 Masterpiece Film</button>
+              <button class="chip" data-preset="disaster">💥 Box-Office Disaster</button>
+              <button class="chip" data-preset="product">💻 Tech Hardware</button>
+              <button class="chip" data-preset="support">📞 Customer Service</button>
+              <button class="chip" data-preset="mixed">⚖️ Nuanced Review</button>
+            </div>
+          </div>
+
+          <!-- Textarea -->
+          <div class="input-group">
+            <textarea 
+              id="sentimentText" 
+              class="sentiment-textarea" 
+              placeholder="Type or paste any customer review, film commentary, or product feedback here..."
+              maxlength="5000"
+            ></textarea>
+            <div class="textarea-footer">
+              <span id="charCount">0 / 5000</span>
+              <button id="btnClear" class="btn-clear">Clear Input</button>
+            </div>
+          </div>
+
+          <button id="btnPredict" class="btn-primary">
+            <span>⚡</span> Classify Sentiment
+          </button>
+        </div>
+
+        <!-- Result Glass Card -->
+        <div class="glass-card" id="resultContainer">
+          <div class="card-header">
+            <h3 class="card-title">
+              <span>🎯</span> Prediction Results
+            </h3>
+            <span class="badge-tag" id="modelVersionBadge">v1.0.0</span>
+          </div>
+
+          <div class="result-card-inner">
+            <!-- Empty State -->
+            <div id="resultEmpty" class="empty-state">
+              <div class="empty-state-icon">🔮</div>
+              <h4>Awaiting Input</h4>
+              <p>Type a review on the left or select a preset chip, then click "Classify Sentiment" to see real-time inference.</p>
+            </div>
+
+            <!-- Active Result State -->
+            <div id="resultActive" class="active-result" style="display: none;">
+              
+              <!-- Big Glowing Sentiment Badge -->
+              <div id="sentimentBadge" class="sentiment-badge-large positive">
+                <span id="sentimentIcon">✨</span>
+                <span id="sentimentTextLabel">POSITIVE SENTIMENT</span>
+              </div>
+
+              <!-- Confidence Gauge -->
+              <div class="confidence-section">
+                <div class="gauge-circle">
+                  <svg class="gauge-svg" width="100" height="100" viewBox="0 0 100 100">
+                    <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
+                    <circle id="gaugeProgress" class="gauge-progress" cx="50" cy="50" r="40"></circle>
+                  </svg>
+                  <div class="gauge-number" id="gaugePercent">95%</div>
+                </div>
+
+                <div class="gauge-meta">
+                  <h4>Model Confidence</h4>
+                  <div class="meta-highlight">High Certainty</div>
+                  <span style="font-size: 0.78rem; color: var(--text-dim);">Calibrated Logistic Probability</span>
+                </div>
+              </div>
+
+              <!-- Probability Breakdown Bars -->
+              <div class="prob-breakdown">
+                <div class="prob-row">
+                  <div class="prob-labels">
+                    <span>Positive Class Probability</span>
+                    <strong id="probPosText" style="color: var(--positive-light);">0%</strong>
+                  </div>
+                  <div class="prob-bar-track">
+                    <div id="probPosFill" class="prob-bar-fill positive" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+                <div class="prob-row">
+                  <div class="prob-labels">
+                    <span>Negative Class Probability</span>
+                    <strong id="probNegText" style="color: var(--negative-light);">0%</strong>
+                  </div>
+                  <div class="prob-bar-track">
+                    <div id="probNegFill" class="prob-bar-fill negative" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer Latency & Model Info -->
+              <div class="result-footer-metrics">
+                <span>Inference Latency:</span>
+                <div class="latency-pill" id="latencyBadge">⚡ 1.84 ms</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- TAB 2: Batch Analysis Lab -->
+    <section id="tab-batch" class="tab-pane">
+      <div class="glass-card batch-card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <span>📦</span> High-Throughput Batch Processing Lab
+          </h3>
+          <span class="badge-tag">FastAPI /predict/batch (Max 100 items)</span>
+        </div>
+
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 14px;">
+          Enter multiple reviews below — one review per line. The backend NLP pipeline processes the batch concurrently and returns individual sentiment labels, confidence distributions, and sub-millisecond execution latencies.
+        </p>
+
+        <textarea 
+          id="batchInput" 
+          class="sentiment-textarea" 
+          style="height: 140px;"
+          placeholder="The cinematography was brilliant and exhilarating.&#10;Terrible customer support, waited 40 minutes and no resolution.&#10;Incredible value for the price! Will buy again.&#10;Defective out of the box, completely broken."
+        ></textarea>
+
+        <div class="batch-actions">
+          <button id="btnRunBatch" class="btn-primary" style="width: auto;">
+            <span>🚀</span> Execute Batch Inference
+          </button>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="batchFilter" class="btn-secondary" style="background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-subtle); outline: none;">
+              <option value="all">Filter: All Sentiments</option>
+              <option value="positive">Only Positive</option>
+              <option value="negative">Only Negative</option>
+            </select>
+            <button id="btnExportBatch" class="btn-secondary">
+              <span>💾</span> Export JSON
+            </button>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-container">
+          <table class="batch-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">#</th>
+                <th>Review Text</th>
+                <th style="width: 140px;">Predicted Sentiment</th>
+                <th style="width: 110px;">Confidence</th>
+                <th style="width: 100px;">Latency</th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+          <div id="batchEmpty" style="text-align: center; padding: 36px; color: var(--text-dim);">
+            No batch runs executed yet. Enter sample reviews above and click "Execute Batch Inference".
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MLOps Telemetry & CloudWatch Metrics Deck -->
+    <section id="tab-telemetry" class="tab-pane">
+      
+      <!-- Top 4 Stat Cards -->
+      <div class="metrics-deck-grid">
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span>Total Requests</span>
+            <span>🌐</span>
+          </div>
+          <div class="metric-card-value" id="statTotalReq">0</div>
+          <div class="metric-card-subtext">Cumulative API calls handled</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span>Total Predictions</span>
+            <span>🎯</span>
+          </div>
+          <div class="metric-card-value" id="statTotalPred">0</div>
+          <div class="metric-card-subtext">Single & batch inferences</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span>Sentiment Distribution</span>
+            <span>⚖️</span>
+          </div>
+          <div class="metric-card-value" id="statPosNegRatio" style="color: var(--neutral);">0% / 0%</div>
+          <div class="metric-card-subtext">Positive / Negative split</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span>Avg Rolling Latency</span>
+            <span>⚡</span>
+          </div>
+          <div class="metric-card-value" id="statAvgLatency" style="color: #38bdf8;">0.0 ms</div>
+          <div class="metric-card-subtext">ECS Fargate container compute</div>
+        </div>
+      </div>
+
+      <!-- Telemetry Details Grid -->
+      <div class="telemetry-detail-grid">
+        <div class="glass-card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <span>📊</span> Live Sentiment Proportion
+            </h3>
+            <button id="togglePolling" class="btn-secondary" style="font-size: 0.76rem; padding: 6px 12px;">
+              Live Polling: Active (3.5s)
+            </button>
+          </div>
+
+          <p style="font-size: 0.86rem; color: var(--text-muted);">
+            Visual breakdown of all classified predictions in production:
+          </p>
+
+          <div class="split-bar-wrapper">
+            <div class="split-bar-track">
+              <div id="splitPositive" class="split-positive" style="width: 50%;"></div>
+              <div id="splitNegative" class="split-negative" style="width: 50%;"></div>
+            </div>
+            <div class="split-legend">
+              <span id="legendPos" style="color: var(--positive-light);">Positive: 0</span>
+              <span id="legendNeg" style="color: var(--negative-light);">Negative: 0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <span>🩺</span> System Uptime & Cloud Health
+            </h3>
+            <span class="badge-tag">GET /health</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.88rem;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <span style="color: var(--text-dim);">API Server Uptime:</span>
+              <strong id="statUptime" style="font-family: var(--font-mono);">0m 0s</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <span style="color: var(--text-dim);">Deployment Target:</span>
+              <strong style="color: #ffb84d;">AWS ECS (Fargate Serverless)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <span style="color: var(--text-dim);">Model Architecture:</span>
+              <strong style="color: var(--primary-light);">TF-IDF (1,2) + Logistic Regression</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-dim);">Observability Agent:</span>
+              <strong style="color: var(--positive-light);">CloudWatch Metrics & Alarms</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: Pipeline Architecture & Drift Monitor -->
+    <section id="tab-architecture" class="tab-pane">
+      <div class="glass-card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <span>🔄</span> End-to-End MLOps System Architecture
+          </h3>
+          <span class="badge-tag">CI/CD Lifecycle on AWS Cloud</span>
+        </div>
+
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          Every model enhancement or code commit automatically executes testing, container packaging, registry upload, and zero-downtime rolling deployment to AWS ECS Fargate containers.
+        </p>
+
+        <!-- 6-Stage Visual Flowchart -->
+        <div class="arch-flowchart">
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 01</div>
+            <div class="flow-node-title">Dataset & NLP</div>
+            <div class="flow-node-desc">Text cleaning, n-gram vectorization & TF-IDF</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 02</div>
+            <div class="flow-node-title">FastAPI Service</div>
+            <div class="flow-node-desc">Lifespan caching, Pydantic validation & REST API</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 03</div>
+            <div class="flow-node-title">Dockerization</div>
+            <div class="flow-node-desc">Slim container packaging with healthchecks</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 04</div>
+            <div class="flow-node-title">GitHub Actions</div>
+            <div class="flow-node-desc">CI linting, 18 unit tests, & ECR image push</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 05</div>
+            <div class="flow-node-title">ECS Fargate</div>
+            <div class="flow-node-desc">Serverless container execution behind ALB</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-step">STAGE 06</div>
+            <div class="flow-node-title">CloudWatch & Drift</div>
+            <div class="flow-node-desc">Continuous telemetry & confidence degradation alerts</div>
+          </div>
+        </div>
+
+        <!-- Drift Simulation Sandbox -->
+        <div class="drift-simulator-box">
+          <div class="drift-header">
+            <div class="drift-title">
+              <span>⚠️</span> Model Drift Detection Simulation (Phase 5 Feature)
+            </div>
+            <button id="btnSimulateDrift" class="btn-primary" style="width: auto; padding: 8px 18px; font-size: 0.88rem; background: linear-gradient(135deg, #f59e0b, #d97706);">
+              <span>⚡</span> Run Drift Simulation
+            </button>
+          </div>
+
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            In production MLOps, models experience <em>data drift</em> or <em>concept drift</em> when incoming customer text deviates from the training distribution. This interactive test feeds anomalous / out-of-distribution queries into the pipeline and evaluates shifts in prediction entropy and confidence distributions.
+          </p>
+
+          <div id="driftConsole" class="drift-status-output">
+            [STATUS] Drift detection monitor standby. Click "Run Drift Simulation" above to evaluate real-time statistical distribution shift.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-credits">
+        <strong>Sentiment Analysis MLOps Pipeline</strong> — Designed & Developed by <strong>Yash Thorat</strong>, <strong>Pranav Padwal</strong>, and <strong>Prasad</strong>
+      </div>
+      <div class="footer-tags">
+        <span class="footer-pill">Python 3.14</span>
+        <span class="footer-pill">FastAPI</span>
+        <span class="footer-pill">Scikit-Learn</span>
+        <span class="footer-pill">Docker</span>
+        <span class="footer-pill">AWS ECS Fargate</span>
+        <span class="footer-pill">GitHub Actions</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

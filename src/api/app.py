@@ -16,7 +16,8 @@ from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.schemas import (
     BatchSentimentRequest,
@@ -135,9 +136,34 @@ async def count_requests_middleware(request, call_next):
     return response
 
 
-@app.get("/", tags=["General"])
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+INDEX_HTML = STATIC_DIR / "index.html"
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/", tags=["General"], response_class=FileResponse)
 async def root():
-    """API root overview and documentation pointer."""
+    """Serve the interactive MLOps web dashboard."""
+    if INDEX_HTML.exists():
+        return FileResponse(INDEX_HTML)
+    return JSONResponse(
+        content={
+            "service": "Sentiment Analysis MLOps Pipeline",
+            "description": "Automated ML inference service running on AWS ECS Fargate",
+            "status": "operational",
+            "version": getattr(app.state, "model_version", "1.0.0"),
+            "docs_url": "/docs",
+            "health_url": "/health",
+            "metrics_url": "/metrics",
+        }
+    )
+
+
+@app.get("/api", tags=["General"])
+async def api_info():
+    """API programmatic metadata and documentation pointers."""
     return {
         "service": "Sentiment Analysis MLOps Pipeline",
         "description": "Automated ML inference service running on AWS ECS Fargate",

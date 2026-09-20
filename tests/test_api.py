@@ -17,13 +17,26 @@ def client():
         yield test_client
 
 
-def test_root_endpoint(client: TestClient):
+def test_root_endpoint_serves_html(client: TestClient):
     response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "Sentiment Analysis" in response.text
+
+
+def test_api_metadata_endpoint(client: TestClient):
+    response = client.get("/api")
     assert response.status_code == 200
     data = response.json()
     assert data["service"] == "Sentiment Analysis MLOps Pipeline"
     assert data["status"] == "operational"
     assert "/docs" in data["docs_url"]
+
+
+def test_static_assets_served(client: TestClient):
+    css_res = client.get("/static/css/styles.css")
+    assert css_res.status_code == 200
+    assert "text/css" in css_res.headers.get("content-type", "")
 
 
 def test_health_endpoint(client: TestClient):
