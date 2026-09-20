@@ -1,0 +1,18 @@
+services:
+  sentiment-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentiment-mlops-api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=local-docker
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
