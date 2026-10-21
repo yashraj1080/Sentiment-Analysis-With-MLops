@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
+  function activateTab(targetId) {
+    tabBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === targetId));
+    tabPanes.forEach(p => p.classList.toggle('active', p.id === targetId));
+    const activeButton = [...tabBtns].find(b => b.getAttribute('data-tab') === targetId);
+    const pageLabel = document.getElementById('pageLabel');
+    if (activeButton && pageLabel) pageLabel.textContent = activeButton.querySelector('span:nth-child(2)').textContent;
+  }
+
   // DOM Elements - Playground
   const textInput = document.getElementById('sentimentText');
   const charCount = document.getElementById('charCount');
@@ -72,16 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------------------
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabPanes.forEach(p => p.classList.remove('active'));
-
-      btn.classList.add('active');
-      const targetId = btn.getAttribute('data-tab');
-      const targetPane = document.getElementById(targetId);
-      if (targetPane) {
-        targetPane.classList.add('active');
-      }
+      activateTab(btn.getAttribute('data-tab'));
     });
+  });
+  document.querySelectorAll('[data-tab]:not(.tab-btn)').forEach(link => {
+    link.addEventListener('click', () => activateTab(link.getAttribute('data-tab')));
   });
 
   // -------------------------------------------------------------------------
@@ -131,7 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned status: ${response.status}`);
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.detail || `Server returned status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -139,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshMetrics(); // Refresh telemetry stats immediately
     } catch (err) {
       console.error('Inference error:', err);
-      alert(`Inference failed: ${err.message}`);
+      showNotice(`Analysis unavailable: ${err.message}`);
     } finally {
       btnPredict.disabled = false;
       btnPredict.innerHTML = `<span>⚡</span> Classify Sentiment`;
@@ -199,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Batch request failed: ${response.status}`);
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.detail || `Batch request failed: ${response.status}`);
       }
 
       const data = await response.json();
@@ -208,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshMetrics();
     } catch (err) {
       console.error('Batch error:', err);
-      alert(`Batch processing error: ${err.message}`);
+      showNotice(`Batch analysis unavailable: ${err.message}`);
     } finally {
       btnRunBatch.disabled = false;
       btnRunBatch.innerHTML = `<span>🚀</span> Execute Batch Inference`;
@@ -330,9 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (togglePolling) {
     togglePolling.addEventListener('click', () => {
       isPolling = !isPolling;
-      togglePolling.textContent = isPolling ? 'Live Polling: Active (3.5s)' : 'Live Polling: Paused';
-      togglePolling.style.background = isPolling ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-      togglePolling.style.borderColor = isPolling ? 'rgba(16, 185, 129, 0.35)' : 'var(--border-subtle)';
+      togglePolling.textContent = isPolling ? 'Live · every 3.5s' : 'Live updates paused';
     });
   }
 
@@ -346,16 +349,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/health');
       if (res.ok) {
         const data = await res.json();
-        healthText.textContent = `AWS ECS: ${data.status.toUpperCase()}`;
-        healthBeacon.style.background = 'var(--positive-bg)';
-        healthBeacon.style.borderColor = 'var(--positive-border)';
+        healthText.textContent = data.status === 'healthy' ? 'Service is healthy' : 'Service is degraded';
+        healthBeacon.classList.toggle('is-healthy', data.status === 'healthy');
+        healthBeacon.classList.toggle('is-offline', data.status !== 'healthy');
+        const env = document.getElementById('runtimeEnvironment');
+        if (env) env.textContent = data.environment || 'Unknown';
+        if (data.model_version) {
+          modelVersionBadge.textContent = `v${data.model_version}`;
+          const architectureVersion = document.getElementById('architectureVersion');
+          if (architectureVersion) architectureVersion.textContent = `v${data.model_version}`;
+        }
       } else {
-        healthText.textContent = 'STATUS: DEGRADED';
-        healthBeacon.style.background = 'var(--negative-bg)';
-        healthBeacon.style.borderColor = 'var(--negative-border)';
+        healthText.textContent = 'Service is degraded';
+        healthBeacon.classList.remove('is-healthy');
+        healthBeacon.classList.add('is-offline');
       }
     } catch {
-      healthText.textContent = 'STATUS: OFFLINE';
+      healthText.textContent = 'Service unavailable';
+      healthBeacon.classList.remove('is-healthy');
+      healthBeacon.classList.add('is-offline');
     }
   }
 
@@ -363,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 6. Drift Detection Simulator
   // -------------------------------------------------------------------------
   btnSimulateDrift.addEventListener('click', async () => {
-    driftConsole.innerHTML = '<span style="color: #fbbf24;">[INFO] Starting Monte Carlo Data Drift Simulation...</span><br/>';
+    driftConsole.textContent = 'Analyzing varied sample reviews…';
     btnSimulateDrift.disabled = true;
 
     const testPayloads = [
@@ -375,32 +387,24 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     try {
-      driftConsole.innerHTML += `[STEP 1/3] Feeding ${testPayloads.length} OOD (Out-of-Distribution) samples into /predict/batch...<br/>`;
+      driftConsole.textContent += ` Sending ${testPayloads.length} sample reviews to the model…`;
       const res = await fetch('/predict/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texts: testPayloads }),
       });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const batchData = await res.json();
 
       let confSum = 0;
       batchData.results.forEach(r => confSum += r.confidence);
       const avgConfidence = confSum / batchData.results.length;
 
-      driftConsole.innerHTML += `[STEP 2/3] Analyzing prediction entropy & confidence distribution shifts...<br/>`;
-      driftConsole.innerHTML += `&nbsp;&nbsp;→ Baseline Average Confidence: <strong>91.4%</strong><br/>`;
-      driftConsole.innerHTML += `&nbsp;&nbsp;→ Production Window Confidence: <strong style="color: #f43f5e;">${Math.round(avgConfidence * 100)}%</strong><br/>`;
-
-      if (avgConfidence < 0.80) {
-        driftConsole.innerHTML += `<br/><span style="color: #f43f5e; font-weight: bold;">[ALERT DETECTED] Statistical Drift Threshold Exceeded (Confidence Drop > 15%)!</span><br/>`;
-        driftConsole.innerHTML += `<span style="color: #38bdf8;">[ACTION] CloudWatch Metric Alarm Triggered → Retraining Pipeline Recommended.</span>`;
-      } else {
-        driftConsole.innerHTML += `<br/><span style="color: #10b981;">[STATUS] Distribution shift within acceptable variance (p > 0.05).</span>`;
-      }
+      driftConsole.textContent = `Sample analysis complete. Average model confidence: ${Math.round(avgConfidence * 100)}%. This is a demonstration over ${batchData.results.length} examples, not a drift measurement.`;
 
       refreshMetrics();
     } catch (err) {
-      driftConsole.innerHTML += `<span style="color: #f43f5e;">[ERROR] Drift simulation failed: ${err.message}</span>`;
+      driftConsole.textContent = `Sample analysis failed: ${err.message}`;
     } finally {
       btnSimulateDrift.disabled = false;
     }
@@ -415,6 +419,21 @@ document.addEventListener('DOMContentLoaded', () => {
       "'": '&#39;',
       '"': '&quot;',
     }[tag] || tag));
+  }
+
+  function showNotice(message) {
+    let notice = document.getElementById('appNotice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.id = 'appNotice';
+      notice.setAttribute('role', 'status');
+      notice.className = 'app-notice';
+      document.querySelector('.main-area').prepend(notice);
+    }
+    notice.textContent = message;
+    notice.classList.add('visible');
+    window.clearTimeout(notice._hideTimer);
+    notice._hideTimer = window.setTimeout(() => notice.classList.remove('visible'), 5000);
   }
 
   // Initial load
