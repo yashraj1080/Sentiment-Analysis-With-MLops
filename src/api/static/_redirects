@@ -1,0 +1,8 @@
+/predict         https://sentiment-analysis-mlops-api.onrender.com/predict         200
+/predict/batch   https://sentiment-analysis-mlops-api.onrender.com/predict/batch   200
+/health          https://sentiment-analysis-mlops-api.onrender.com/health          200
+/metrics         https://sentiment-analysis-mlops-api.onrender.com/metrics         200
+/api             https://sentiment-analysis-mlops-api.onrender.com/api             200
+/docs            https://sentiment-analysis-mlops-api.onrender.com/docs            200
+/openapi.json    https://sentiment-analysis-mlops-api.onrender.com/openapi.json    200
+/redoc           https://sentiment-analysis-mlops-api.onrender.com/redoc           200
