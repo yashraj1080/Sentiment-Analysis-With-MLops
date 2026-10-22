@@ -1,3 +1,4 @@
+/static/*        /:splat                                                        200
 /predict         https://sentiment-analysis-mlops-api.onrender.com/predict         200
 /predict/batch   https://sentiment-analysis-mlops-api.onrender.com/predict/batch   200
 /health          https://sentiment-analysis-mlops-api.onrender.com/health          200
