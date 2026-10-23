@@ -22,8 +22,9 @@
       <nav class="side-nav" aria-label="Workspace navigation">
         <button class="tab-btn active" data-tab="tab-playground"><span class="nav-icon">✳</span><span>Analyze</span><kbd>01</kbd></button>
         <button class="tab-btn" data-tab="tab-batch"><span class="nav-icon">▤</span><span>Batch review</span><kbd>02</kbd></button>
-        <button class="tab-btn" data-tab="tab-telemetry"><span class="nav-icon">⌁</span><span>Activity</span><kbd>03</kbd></button>
-        <button class="tab-btn" data-tab="tab-architecture"><span class="nav-icon">◈</span><span>About the model</span><kbd>04</kbd></button>
+        <button class="tab-btn" data-tab="tab-live"><span class="nav-icon">RSS</span><span>Live headlines</span><kbd>03</kbd></button>
+        <button class="tab-btn" data-tab="tab-telemetry"><span class="nav-icon">⌁</span><span>Activity</span><kbd>04</kbd></button>
+        <button class="tab-btn" data-tab="tab-architecture"><span class="nav-icon">◈</span><span>About the model</span><kbd>05</kbd></button>
       </nav>
       <div class="sidebar-bottom">
         <div class="side-label">SERVICE</div>
@@ -70,6 +71,11 @@
           <div class="batch-actions"><button id="btnRunBatch" class="btn-primary"><span>Analyze reviews</span><b>↗</b></button><div class="batch-tools"><select id="batchFilter" aria-label="Filter batch results"><option value="all">All sentiments</option><option value="positive">Positive only</option><option value="negative">Negative only</option></select><button id="btnExportBatch" class="btn-secondary">↓ Export JSON</button></div></div>
           <div class="table-container"><table class="batch-table"><thead><tr><th>#</th><th>REVIEW</th><th>SENTIMENT</th><th>CONFIDENCE</th><th>TIME</th></tr></thead><tbody id="batchTableBody"></tbody></table><div id="batchEmpty" class="batch-empty">Your analyzed reviews will appear here.</div></div>
         </section>
+      </section>
+
+      <section id="tab-live" class="tab-pane">
+        <div class="page-heading compact-heading"><div><div class="eyebrow">PUBLIC RSS ? LIVE CLASSIFICATION</div><h1>Headlines in <em>context.</em></h1><p>Recent movie review or news headlines classified by this project?s model.</p></div></div>
+        <section class="panel live-feed-panel"><div class="panel-heading"><div><span class="step-label">LIVE FEED</span><h2>Recent headlines</h2></div><div class="live-controls"><select id="liveFeedType" aria-label="Headline feed"><option value="movies">Movie reviews</option><option value="news">General news</option></select><button id="refreshLiveFeed" class="btn-secondary">Refresh feed</button></div></div><p class="panel-copy">Sentiment comes from the headline and short RSS summary. It does not represent audience opinion or the full article.</p><div id="liveFeedStatus" class="live-feed-status">Choose a feed to load current headlines.</div><div id="liveFeedItems" class="live-feed-items"></div></section>
       </section>
 
       <section id="tab-telemetry" class="tab-pane">

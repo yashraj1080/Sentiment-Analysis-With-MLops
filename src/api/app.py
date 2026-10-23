@@ -9,7 +9,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict
@@ -17,6 +21,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 
 from src.api.schemas import (
@@ -71,6 +76,39 @@ class MetricsTracker:
 
 
 metrics_tracker = MetricsTracker()
+
+
+def fetch_live_headlines(feed: str, pipeline: Any, limit: int) -> list[dict[str, Any]]:
+    """Fetch public Google News RSS headlines and classify their text."""
+    query = 'movie reviews' if feed == 'movies' else 'news'
+    url = 'https://news.google.com/rss/search?' + urllib.parse.urlencode({
+        'q': query, 'hl': 'en-US', 'gl': 'US', 'ceid': 'US:en'
+    })
+    request = urllib.request.Request(url, headers={'User-Agent': 'SentimentStudio/1.0'})
+    with urllib.request.urlopen(request, timeout=8) as response:
+        root = ET.fromstring(response.read())
+
+    items = []
+    for item in root.findall('./channel/item')[:limit]:
+        title = item.findtext('title', '').strip()
+        description = re.sub(r'<[^>]+>', ' ', item.findtext('description', ''))
+        description = re.sub(r'\s+', ' ', description).strip()
+        text = f'{title}. {description}'.strip()
+        if not title or not description:
+            text = title or description
+        if not text:
+            continue
+        prediction = predict_sentiment(pipeline, text[:5000])
+        items.append({
+            'title': title,
+            'summary': description[:500],
+            'url': item.findtext('link', '').strip(),
+            'published': item.findtext('pubDate', '').strip(),
+            'source': item.findtext('source', '').strip(),
+            'sentiment': prediction['sentiment'],
+            'confidence': prediction['confidence'],
+        })
+    return items
 
 
 @asynccontextmanager
@@ -284,3 +322,26 @@ async def predict_batch(payload: BatchSentimentRequest):
 async def get_metrics():
     """Retrieve runtime prediction statistics and operational metrics."""
     return MetricsResponse(**metrics_tracker.to_dict())
+
+
+@app.get('/live-feed', tags=['Inference'])
+async def live_feed(feed: str = 'movies', limit: int = 12):
+    """Classify recent public movie-review or general-news RSS headlines."""
+    if feed not in {'movies', 'news'}:
+        raise HTTPException(status_code=422, detail="feed must be 'movies' or 'news'")
+    pipeline = getattr(app.state, 'model', None)
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail='Model is not available.')
+    limit = max(1, min(limit, 20))
+    try:
+        items = await run_in_threadpool(fetch_live_headlines, feed, pipeline, limit)
+    except Exception as exc:
+        logger.warning('Live RSS feed unavailable: %s', exc)
+        raise HTTPException(status_code=502, detail='The live news feed is temporarily unavailable.') from exc
+    return {
+        'feed': feed,
+        'source': 'Google News RSS',
+        'analyzed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'note': 'Sentiment is inferred from headline and short RSS summary; it does not represent audience opinion or the full article.',
+        'items': items,
+    }

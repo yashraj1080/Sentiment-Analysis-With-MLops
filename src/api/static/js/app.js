@@ -410,6 +410,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Live public headline feed
+  const liveFeedType = document.getElementById('liveFeedType');
+  const refreshLiveFeed = document.getElementById('refreshLiveFeed');
+  const liveFeedItems = document.getElementById('liveFeedItems');
+  const liveFeedStatus = document.getElementById('liveFeedStatus');
+
+  async function loadLiveFeed() {
+    if (!liveFeedType || !liveFeedItems || !liveFeedStatus) return;
+    refreshLiveFeed.disabled = true;
+    liveFeedStatus.textContent = 'Fetching headlines and analyzing sentiment...';
+    liveFeedItems.replaceChildren();
+    try {
+      const response = await fetch(`/live-feed?feed=${encodeURIComponent(liveFeedType.value)}&limit=12`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || `Feed request failed (${response.status})`);
+      liveFeedStatus.textContent = `${data.items.length} headlines | ${data.source} | refreshed ${new Date(data.analyzed_at).toLocaleTimeString()}`;
+      data.items.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'live-headline-card';
+        const title = document.createElement('h3');
+        title.textContent = item.title;
+        const summary = document.createElement('p');
+        summary.textContent = item.summary;
+        const meta = document.createElement('div');
+        meta.className = 'live-headline-meta';
+        const sentiment = document.createElement('span');
+        sentiment.className = `badge-sentiment-table ${item.sentiment.toLowerCase()}`;
+        sentiment.textContent = `${item.sentiment} | ${Math.round(item.confidence * 100)}% confidence`;
+        const source = document.createElement('span');
+        source.textContent = item.source || item.published;
+        meta.append(sentiment, source);
+        card.append(title, summary, meta);
+        if (item.url && /^https?:\/\//i.test(item.url)) {
+          const link = document.createElement('a');
+          link.href = item.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'Open original article';
+          card.append(link);
+        }
+        liveFeedItems.append(card);
+      });
+      if (!data.items.length) liveFeedStatus.textContent = 'No headlines were returned. Try refreshing shortly.';
+    } catch (error) {
+      liveFeedStatus.textContent = `Live feed unavailable: ${error.message}`;
+    } finally {
+      refreshLiveFeed.disabled = false;
+    }
+  }
+  if (refreshLiveFeed) refreshLiveFeed.addEventListener('click', loadLiveFeed);
+  if (liveFeedType) liveFeedType.addEventListener('change', loadLiveFeed);
+  document.querySelector('[data-tab="tab-live"]')?.addEventListener('click', loadLiveFeed);
+
   // Utilities
   function escapeHtml(str) {
     return str.replace(/[&<>'"]/g, tag => ({
