@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const probNegFill = document.getElementById('probNegFill');
   const probNegText = document.getElementById('probNegText');
   const latencyBadge = document.getElementById('latencyBadge');
+  const emotionStatus = document.getElementById('emotionStatus');
+  const emotionResults = document.getElementById('emotionResults');
+  const emotionSegments = document.getElementById('emotionSegments');
   const modelVersionBadge = document.getElementById('modelVersionBadge');
 
   // DOM Elements - Batch
@@ -140,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       renderSingleResult(data);
+      updateEmotionRead(text);
       refreshMetrics(); // Refresh telemetry stats immediately
     } catch (err) {
       console.error('Inference error:', err);
@@ -180,6 +184,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // Latency & Model Version
     latencyBadge.textContent = `⚡ ${data.latency_ms} ms`;
     modelVersionBadge.textContent = `v${data.model_version}`;
+  }
+
+  async function updateEmotionRead(text) {
+    emotionStatus.textContent = 'Reading emotional tone…';
+    emotionResults.replaceChildren();
+    emotionSegments.replaceChildren();
+    try {
+      const response = await fetch('/predict/emotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Emotion model unavailable (${response.status})`);
+      const detected = data.emotions.map(item => item.emotion.replace(/_/g, ' '));
+      emotionStatus.textContent = data.emotions.length
+        ? `Overall threshold-selected: ${detected.join(', ')}. Clause-level signals below can reveal shifts.`
+        : data.is_neutral ? 'The statement reads as neutral.' : 'No emotion passed its tuned threshold; showing the strongest signals.';
+      data.top_emotions.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'emotion-score-row';
+        const heading = document.createElement('div');
+        heading.className = 'emotion-score-heading';
+        const name = document.createElement('span');
+        name.textContent = item.emotion.replace(/_/g, ' ');
+        const score = document.createElement('strong');
+        score.textContent = `${Math.round(item.confidence * 100)}%`;
+        heading.append(name, score);
+        const track = document.createElement('div');
+        track.className = 'emotion-score-track';
+        const fill = document.createElement('div');
+        fill.className = 'emotion-score-fill';
+        fill.style.width = `${Math.round(item.confidence * 100)}%`;
+        track.append(fill);
+        row.append(heading, track);
+        emotionResults.append(row);
+      });
+      data.segments.forEach(segment => {
+        const card = document.createElement('article');
+        card.className = 'emotion-segment-card';
+        const quote = document.createElement('p');
+        quote.textContent = segment.text;
+        const labels = document.createElement('div');
+        labels.className = 'emotion-segment-labels';
+        segment.emotions.forEach(item => {
+          const badge = document.createElement('span');
+          badge.textContent = `${item.emotion.replace(/_/g, ' ')} · ${Math.round(item.confidence * 100)}%`;
+          labels.append(badge);
+        });
+        card.append(quote, labels);
+        emotionSegments.append(card);
+      });
+    } catch (error) {
+      emotionStatus.textContent = error.message;
+    }
   }
 
   // -------------------------------------------------------------------------

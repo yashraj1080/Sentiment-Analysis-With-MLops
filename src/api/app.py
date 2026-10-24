@@ -31,8 +31,10 @@ from src.api.schemas import (
     MetricsResponse,
     SentimentRequest,
     SentimentResponse,
+    EmotionResponse,
 )
 from src.model.train import load_model_pipeline, predict_sentiment, DEFAULT_MODEL_PATH, DEFAULT_METADATA_PATH
+from src.model.emotion import load_emotion_model, predict_emotions, EMOTION_MODEL_PATH, EMOTION_METADATA_PATH
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sentiment_api")
@@ -119,6 +121,8 @@ async def lifespan(app: FastAPI):
     app.state.model = None
     app.state.metadata = {}
     app.state.model_version = "1.0.0"
+    app.state.emotion_model = None
+    app.state.emotion_metadata = {}
 
     try:
         if DEFAULT_MODEL_PATH.exists():
@@ -138,6 +142,17 @@ async def lifespan(app: FastAPI):
 
     except Exception as exc:
         logger.error(f"Failed to load model pipeline: {exc}", exc_info=True)
+
+    try:
+        if EMOTION_MODEL_PATH.exists():
+            app.state.emotion_model = load_emotion_model(EMOTION_MODEL_PATH)
+            if EMOTION_METADATA_PATH.exists():
+                app.state.emotion_metadata = json.loads(EMOTION_METADATA_PATH.read_text(encoding="utf-8"))
+            logger.info("Loaded multi-label emotion model from %s", EMOTION_MODEL_PATH)
+        else:
+            logger.info("Emotion model is not trained yet; /predict/emotions will be unavailable")
+    except Exception as exc:
+        logger.error("Failed to load emotion model: %s", exc, exc_info=True)
 
     yield
 
@@ -270,6 +285,33 @@ async def predict_single(payload: SentimentRequest):
         probabilities=result["probabilities"],
         latency_ms=latency_ms,
         model_version=getattr(app.state, "model_version", "1.0.0"),
+    )
+
+
+@app.post("/predict/emotions", response_model=EmotionResponse, tags=["Inference"])
+async def predict_emotion_endpoint(payload: SentimentRequest):
+    """Predict one or more fine-grained emotions expressed in a statement."""
+    pipeline = getattr(app.state, "emotion_model", None)
+    if pipeline is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Emotion model is not trained. Download GoEmotions and run `python -m src.model.emotion`.",
+        )
+    metadata = getattr(app.state, "emotion_metadata", {})
+    result = predict_emotions(
+        pipeline,
+        payload.text,
+        metadata.get("labels", []),
+        metadata.get("thresholds", {}),
+    )
+    return EmotionResponse(
+        text=payload.text,
+        emotions=result["emotions"],
+        top_emotions=result["top_emotions"],
+        segments=result["segments"],
+        is_neutral=result["is_neutral"],
+        note=result["note"],
+        model_version=metadata.get("model_version", "unknown"),
     )
 
 

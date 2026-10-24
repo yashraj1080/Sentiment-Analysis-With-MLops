@@ -31,6 +31,26 @@ class SentimentResponse(BaseModel):
     model_version: str = Field(description="Version of the model serving predictions")
 
 
+class EmotionLabel(BaseModel):
+    emotion: str = Field(description="Predicted emotion category")
+    confidence: float = Field(description="Independent emotion score between 0 and 1")
+
+
+class EmotionSegment(BaseModel):
+    text: str
+    emotions: List[EmotionLabel]
+
+
+class EmotionResponse(BaseModel):
+    text: str
+    emotions: List[EmotionLabel] = Field(description="All emotions above dev-tuned thresholds; may be multiple")
+    top_emotions: List[EmotionLabel] = Field(description="Three highest emotion scores for context")
+    segments: List[EmotionSegment] = Field(description="Emotion scores for sentence and contrast clauses")
+    is_neutral: bool
+    note: str
+    model_version: str
+
+
 class BatchSentimentRequest(BaseModel):
     """Batch sentiment analysis prediction request."""
     texts: List[str] = Field(

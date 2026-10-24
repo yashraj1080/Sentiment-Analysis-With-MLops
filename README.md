@@ -26,6 +26,7 @@ Deploying and maintaining machine learning models in production requires robust 
 ### Key Highlights
 - **High-Performance NLP Model**: Scikit-Learn pipeline utilizing sublinear TF-IDF n-grams `(1, 2)` paired with balanced `LogisticRegression`, achieving **95.8% accuracy** and sub-10ms inference latency.
 - **Production REST API**: Built with **FastAPI**, featuring lifespan model caching, Pydantic V2 request validation, batch prediction capabilities, and real-time observability metrics.
+- **Fine-Grained Emotion Analysis**: A separate multi-label classifier predicts overlapping emotional states from statements, trained on Google Research's human-annotated GoEmotions corpus with per-emotion thresholds tuned on a development split.
 - **Docker Containerization**: Optimized lightweight container with non-root security and built-in healthchecks.
 - **Full Test Coverage**: Comprehensive `pytest` test suite covering text preprocessing, model metrics, and API endpoints with 100% pass rate.
 
@@ -133,13 +134,23 @@ python -m src.model.train
 ```
 *Output: `models/sentiment_pipeline.joblib` and `models/model_metadata.json` with accuracy and F1 scores.*
 
-### 4. Run Test Suite
+### 4. Train the Emotion Model (Fine-Grained)
+Download the official GoEmotions train, dev, test, and label files, then train the multi-label classifier:
+```powershell
+python scripts/download_goemotions.py
+python -m src.model.emotion
+```
+*Output: `models/emotion_pipeline.joblib` and `models/emotion_metadata.json`. Thresholds are selected per emotion using the dev split; final macro/micro F1 and per-emotion metrics are calculated on the held-out test split.*
+
+The emotion model can predict multiple emotions for one statement. It also scores sentence and contrast clauses separately, making emotional shifts visible in mixed statements. Its training corpus contains Reddit comments, so its scores are estimates and may not transfer perfectly to movie reviews or customer feedback. The API's existing positive/negative sentiment model remains a separate prediction.
+
+### 5. Run Test Suite
 Run the 18 automated unit and integration tests:
 ```powershell
 python -m pytest tests/ -v
 ```
 
-### 5. Start the REST API
+### 6. Start the REST API
 Start the FastAPI application with live reloading:
 ```powershell
 python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload
@@ -149,11 +160,21 @@ Alternatively, use the convenient one-click runner:
 python scripts/run_local.py
 ```
 
+The single-analysis result includes an **Emotion Reader**. If the GoEmotions model has not been trained, the app explains the setup commands there.
+
 ---
 
 ## 🔌 API Reference & Usage
 
 Once the server is running, visit **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
+
+### Fine-Grained Emotion Prediction
+```bash
+curl -X POST "http://127.0.0.1:8000/predict/emotions" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "I waited an hour and nobody helped me, but the team finally fixed it."}'
+```
+The response can include multiple emotions with independent scores. The model reports both threshold-selected emotions and the top three scores for context; it does not claim to know a person's internal state from text alone.
 
 ### 1. Health Check
 ```bash

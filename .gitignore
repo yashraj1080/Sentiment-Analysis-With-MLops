@@ -51,4 +51,5 @@ Thumbs.db
 # Large dataset caches (keep sample seed datasets)
 data/raw/*.zip
 data/raw/*.tar.gz
+data/raw/goemotions/
 data/processed/large_*.parquet
